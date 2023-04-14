@@ -26,15 +26,15 @@ Some `8KB pages` are grouped together and called an `mspan`(多个 8K 页面，�
 
 <img src="../../../assets/image-20230413004702839.png" alt="image-20230413004702839" style="zoom:80%;" /> 
 
+`The bitmap area` shows which addresses in the arena area have objects.(不是指向 page ，而是 page 内的内存地址)
 
+<img src="../../../assets/image-20230413004702839a.png" alt="image-20230413004702839" style="zoom:80%;" />
 
+It uses a flag with `some bits` to show if `the object` has `a pointer` or `GC tag`.
 
+<img src="../../../assets/image-20230414094920504.png" alt="image-20230414094920504" style="zoom:80%;" />
 
+The space required for the `bitmap` is `512GB divided by 32`, which equals `16GB`.
 
-
-
-
-
-
-
+(2023/4/14)
 
