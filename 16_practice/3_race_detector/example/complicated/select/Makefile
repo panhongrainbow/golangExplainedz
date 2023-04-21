@@ -4,6 +4,8 @@ race:
 	go test -race -v -run='^\QTest_Check' ./select_race/ | tail -n 3
 fixed:
 	go test -race -v -run='^\QTest_Check' ./select_fixed/ | tail -n 3
+atomic:
+	go test -race -v -run='^\QTest_Check' ./select_atomic/ | tail -n 3
 help:
 	@echo "Usage: make [target]"
 	@echo ""
