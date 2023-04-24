@@ -1,22 +1,77 @@
-# race detector list
+# Race Detector
 
 > Here I list all the places where `race detector` is needed, including examples and instructions for actual operation.
 
 ## Introduction
 
-If the code contains the following content, then consider using `race detect`.
+If the code contains the following content, then consider using `race detecter`.
 
-1. When `global variables` or `static variables` are shared among multiple Goroutines.
-2. As long as the program contains `goroutine`
-3. As long as the program contains `channel`
-4. As long as the program contains `syc package`
-5. As long as the program contains `closure`
+### Basic Rules
+
+1. When `global variables` or `static variables` are shared among `multiple Goroutines`.
+
+   ```bash
+   $ cd /home/panhong/go/src/github.com/panhongrainbow/golangExplainedz/16_practice/3_race_detector/example/basic/goroutine
+   $ make test
+   ```
+
+   <img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424151618339.png" alt="image-20230424151618339" style="zoom:80%;" /> 
+
+   ```bash
+   $ cd /home/panhong/go/src/github.com/panhongrainbow/golangExplainedz/16_practice/3_race_detector/example/basic/goroutine
+   $ make benchmark
+   ```
+
+   <img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424152121506.png" alt="image-20230424152121506" style="zoom:80%;" /> 
+
+2. As long as the program contains `channel`
+
+   - Channels `do not` cause race conditions, but if there is `a malfunction in the channel mechanism`, there `may be` race conditions. (通道不会有 race，但机制故障就难说了)
+
+   ```bash
+   $ cd /home/panhong/go/src/github.com/panhongrainbow/golangExplainedz/16_practice/3_race_detector/example/basic/channel
+   $ make test
+   ```
+
+   <img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424170604665.png" alt="image-20230424170604665" style="zoom:80%;" /> 
+
+3. As long as the program contains `syc package`
+
+   - sync `does not` cause race conditions, but if there is `a malfunction in the sync mechanism`, there `may be` race conditions. (sync 不会有 race，但机制故障就难说了)
+
+   ```bash
+   $ cd /home/panhong/go/src/github.com/panhongrainbow/golangExplainedz/16_practice/3_race_detector/example/basic/sync
+   $ make test
+   ```
+
+   <img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424180655469.png" alt="image-20230424180655469" style="zoom:80%;" /> 
+
+4. As long as the program contains `closure`
+   ```bash
+   $ cd /home/panhong/go/src/github.com/panhongrainbow/golangExplainedz/16_practice/3_race_detector/example/basic/closure
+   $ make test
+   ```
+
+   <img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424195618919.png" alt="image-20230424195618919" style="zoom:80%;" /> 
+
+5. Reading and writing `map` or `configuration information` in multiple Goroutines
+   ```bash
+   1
+   ```
+
+   <img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424213551242.png" alt="image-20230424213551242" style="zoom:80%;" /> 
+
+   ```bash
+   1
+   ```
+
+   <img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424213827572.png" alt="image-20230424213827572" style="zoom:80%;" /> 
+
 6. As long as the program `accesses pointer variables`
-7. As long as the program `accesses interface variables`
-8. Using `maps` for concurrent reading and writing
-9. Reading and writing `configuration information` in multiple Goroutines
 
-(2023/4/19)
+7. As long as the program `accesses interface variables`
+
+(2023/4/24)
 
 ## Instructions order
 
@@ -122,6 +177,8 @@ When it is `decided that sending through a channel` is possible and important pa
 
 If memory barriers are added at the beginning, it is inefficient and redundant.
 
+(2023/4/20)
+
 ## Atomic
 
 > Atomic operations are implemented at the hardware level and can be used to fix data races when multiple threads access and modify the same variable at the same time.
@@ -134,7 +191,30 @@ Atomic operations are implemented at the hardware level using special cache and 
 
 These protocols ensure that atomic operations are executed in a thread-safe manner, without interference from other threads. 
 
-### bug
+### Atomic in CPU
+
+#### Introduction
+
+The atomic package is implemented using memory barriers.
+
+#### Linux flags
+
+Confirm if the Linux distribution supports golang atomic.
+
+| cpu flags | descriptions                                 |
+| --------- | -------------------------------------------- |
+| cx8       | supports 8-byte atomic exchange instruction  |
+| cx16      | supports 16-byte atomic exchange instruction |
+
+```bash
+$ cat /proc/cpuinfo
+```
+
+<img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424135944881.png" alt="image-20230424135944881" style="zoom:80%;" /> 
+
+(2023/4/24)
+
+#### Bug
 
 
 
