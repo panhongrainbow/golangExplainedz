@@ -63,14 +63,15 @@ func Test_Check_data_race(t *testing.T) {
 			mu.Unlock() // add unlock
 		}
 
-		var ptr1 = new(int)
+		// var ptr1 = new(int)
+		var ptr1 int
 
 		// Simulating the main program
 		go func() {
-			write(ptr1)
+			write(&ptr1)
 		}()
 		<-c
-		go incr(ptr1)
+		go incr(&ptr1)
 
 		// Waiting
 		wg.Wait()
