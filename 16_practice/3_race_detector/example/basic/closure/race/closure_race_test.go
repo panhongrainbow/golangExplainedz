@@ -7,7 +7,7 @@ import (
 
 // Test_Race_closure shows that closure is not in synchronized condition due to a malfunctioning closure mechanism..
 func Test_Race_closure(t *testing.T) {
-	// Use waitgroup to wait for all goroutines to finish
+	// use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 

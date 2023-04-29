@@ -19,14 +19,14 @@ func Test_Check_data_race(t *testing.T) {
 
 		// Defining the write function
 		write := func() {
-			wg.Done()
+			defer wg.Done()
 			x := 10
 			ptr = &x // Modifying the pointer variable // <<<<< <<<<< <<<<<
 		}
 
 		// Defining the increment function
 		incr := func() {
-			wg.Done()
+			defer wg.Done()
 			*ptr++ // Accessing the variable pointed to by the pointer // <<<<< <<<<< <<<<<
 		}
 
@@ -48,7 +48,7 @@ func Test_Check_data_race(t *testing.T) {
 
 		// Defining the write function
 		write := func(ptr *int) {
-			wg.Done()
+			defer wg.Done()
 			mu.Lock()   // add lock
 			*ptr = 10   // 修改指针变量
 			mu.Unlock() // add unlock
@@ -57,7 +57,7 @@ func Test_Check_data_race(t *testing.T) {
 
 		// Defining the increment function
 		incr := func(ptr *int) {
-			wg.Done()
+			defer wg.Done()
 			mu.Lock()   // add lock
 			*ptr++      // access the variable pointed to by the pointer
 			mu.Unlock() // add unlock
@@ -93,14 +93,14 @@ func Test_Check_data_race(t *testing.T) {
 		// Goroutines need to modify the interface variable together
 		go func() {
 			// Waiting
-			wg.Done()
+			defer wg.Done()
 			write()
 			c <- 1
 		}()
 
 		go func() {
 			// Waiting
-			wg.Done()
+			defer wg.Done()
 			read()
 			<-c
 		}()
@@ -119,14 +119,14 @@ func Test_Check_data_race(t *testing.T) {
 		// Goroutines need to modify the interface variable together
 		go func() {
 			// Waiting
-			wg.Done()
+			defer wg.Done()
 			writeMu()
 			c <- 1
 		}()
 
 		go func() {
 			// Waiting
-			wg.Done()
+			defer wg.Done()
 			readMu()
 			<-c
 		}()
@@ -151,11 +151,11 @@ func Test_Check_data_race(t *testing.T) {
 		}
 
 		go func() {
-			wg.Done()
+			defer wg.Done()
 			write()
 		}()
 		go func() {
-			wg.Done()
+			defer wg.Done()
 			read()
 		}()
 
@@ -186,11 +186,11 @@ func Test_Check_data_race(t *testing.T) {
 		}
 
 		go func() {
-			wg.Done()
+			defer wg.Done()
 			write()
 		}()
 		go func() {
-			wg.Done()
+			defer wg.Done()
 			read()
 		}()
 
@@ -212,11 +212,11 @@ func Test_Check_data_race(t *testing.T) {
 		}
 
 		go func() {
-			wg.Done()
+			defer wg.Done()
 			write()
 		}()
 		go func() {
-			wg.Done()
+			defer wg.Done()
 			read()
 		}()
 

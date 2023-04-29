@@ -9,14 +9,14 @@ var mu sync.Mutex // correct (1/3) !
 
 // Test_Race_goroutines fixed that goroutines are not synchronized
 func Test_Race_goroutines(t *testing.T) {
-	// use waitgroup to wait for all goroutines to finish
+	// use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 
 	// shared variable by goroutines
 	count := 0 // ----- race ----->
 
-	// start 1000 goroutines
+	// Start 1000 goroutines
 	for i := 0; i < 1000; i++ {
 		go func() {
 			defer wg.Done()

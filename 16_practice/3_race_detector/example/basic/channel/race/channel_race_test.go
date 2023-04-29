@@ -7,7 +7,7 @@ import (
 
 // Test_Race_channel shows that channel is not in synchronized condition due to a malfunctioning channel mechanism..
 func Test_Race_channel(t *testing.T) {
-	// use waitgroup to wait for all goroutines to finish
+	// use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -18,7 +18,7 @@ func Test_Race_channel(t *testing.T) {
 	c := make(chan int)
 
 	/*
-		Disabling the channel mechanism here will cause a race condition,
+		Disable the channel mechanism here will cause a race condition,
 		which is my purpose of doing so
 		(我故意的)
 	*/

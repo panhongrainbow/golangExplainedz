@@ -9,7 +9,7 @@ import (
 
 // Test_Race_map fixed that map are not synchronized
 func Test_Race_map(t *testing.T) {
-	// use waitgroup to wait for all map to finish
+	// use wait group to wait for all map to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 
@@ -17,7 +17,7 @@ func Test_Race_map(t *testing.T) {
 	var count = sync.Map{} // ----- race ----->
 	count.Store("key", new(int64))
 
-	// start 1000 goroutines
+	// Start 1000 goroutines
 	for i := 0; i < 1000; i++ {
 		go func() {
 			defer wg.Done()

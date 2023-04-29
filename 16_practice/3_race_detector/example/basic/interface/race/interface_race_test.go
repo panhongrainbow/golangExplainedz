@@ -2,33 +2,38 @@ package interface_race
 
 import (
 	"sync"
-	"sync/atomic"
 	"testing"
 )
 
 // Test_Race_interface fixed that interface are not synchronized
 func Test_Race_interface(t *testing.T) {
-	// use waitgroup to wait for all interface to finish
+	// use wait group to wait for all interface to finish
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	// Create a channel
-	c := make(chan int, 1000)
+	//c := make(chan int, 1000)
+	/*
+		Disable the channel mechanism here will cause a race condition,
+		which is my purpose of doing so
+		(我故意的)
+	*/
+	//close(c)
 
-	// start 1000 goroutines
+	// Start 1000 goroutines
 	for i := 0; i < 500; i++ {
 		// Goroutines need to modify the interface variable together
 		go func() {
 			// Waiting
-			wg.Done()
+			defer wg.Done()
 			Write()
-			c <- 1
+			// c <- 1
 		}()
 
 		go func() {
 			// Waiting
-			<-c
-			wg.Done()
+			// <-c
+			defer wg.Done()
 			Set()
 		}()
 	}
@@ -39,26 +44,22 @@ func Test_Race_interface(t *testing.T) {
 
 // Test_Race_interface fixed that interface are in synchronized
 func Test_fixed_interface(t *testing.T) {
-	// use waitgroup to wait for all interface to finish
+	// use wait group to wait for all interface to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 
-	// Create a channel
-	c := make(chan int, 1)
-
+	// Start 1000 goroutines
 	for i := 0; i < 500; i++ {
 		// Goroutines need to modify the interface variable together
 		go func() {
 			// Waiting
-			wg.Done()
+			defer wg.Done()
 			MutexWrite()
-			c <- 1
 		}()
 
 		go func() {
 			// Waiting
-			<-c
-			wg.Done()
+			defer wg.Done()
 			MutexSet()
 		}()
 	}
@@ -69,26 +70,22 @@ func Test_fixed_interface(t *testing.T) {
 
 // Test_atomic_interface fixed that interface are in synchronized
 func Test_atomic_interface(t *testing.T) {
-	// use waitgroup to wait for all interface to finish
+	// use wait group to wait for all interface to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 
-	// Create a channel
-	c := make(chan int, 1)
-
+	// Start 1000 goroutines
 	for i := 0; i < 500; i++ {
 		// Goroutines need to modify the interface variable together
 		go func() {
 			// Waiting
-			wg.Done()
+			defer wg.Done()
 			AtomicWrite()
-			c <- 1
 		}()
 
 		go func() {
 			// Waiting
-			<-c
-			wg.Done()
+			defer wg.Done()
 			AtomicSet()
 		}()
 	}
@@ -97,12 +94,18 @@ func Test_atomic_interface(t *testing.T) {
 	wg.Wait()
 }
 
-// Benchmark_Race_interface test
-func Benchmark_Race_interface(b *testing.B) {
-	// shared variable by interface
-	var count int32 = 0 // ----- race ----->
-
+// Benchmark_Race_fixed_interface test
+func Benchmark_Race_fixed_interface(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		atomic.AddInt32(&count, 1) // <----- race ----- ( X many )
+		go MutexWrite() // <- race -
+		go MutexSet()   // <- race -
+	}
+}
+
+// Benchmark_Race_atomic_interface test
+func Benchmark_Race_atomic_interface(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		go AtomicWrite() // <- race -
+		go AtomicSet()   // <- race -
 	}
 }

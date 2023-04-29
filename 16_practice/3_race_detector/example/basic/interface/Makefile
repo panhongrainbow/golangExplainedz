@@ -8,11 +8,8 @@ interface_fixed:
 interface_atomic:
 	go test -race -v -run Test_atomic_interface ./race/
 
-benchmark: benchmark_fixed benchmark_atomic
-benchmark_fixed:
-	go test -v -bench=. -run=none -benchmem ./fixed/
-benchmark_atomic:
-	go test -v -bench=. -run=none -benchmem ./atomic/
+benchmark:
+	go test -v -bench=. -run=none -benchmem ./race/
 
 help:
 	@echo "Usage: make [target]"
@@ -23,5 +20,3 @@ help:
 	@echo "  interface_race       Run race condition test with interface"
 	@echo "  interface_fixed      Run race condition test with fixed interface"
 	@echo "  interface_atomic     Run race condition test with atomic operations"
-	@echo "  benchmark_fixed      Run benchmark for fixed race condition test"
-	@echo "  benchmark_atomic     Run benchmark for race condition test with atomic operations"
