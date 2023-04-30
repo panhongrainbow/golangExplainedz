@@ -7,34 +7,6 @@ import (
 	"unsafe"
 )
 
-/*
-type List struct {
-    value int
-    next  *List
-}
-
-var list *List
-
-func main() {
-    go func() {
-        for {
-            p := list
-            n := atomic.LoadPointer(&list.next)
-            if atomic.CompareAndSwapPointer(&p.next, n, &List{1, n}) {
-                break
-            }
-        }
-    }()
-
-    go func() { // 遍历链表的goroutine
-        for p := list; p != nil; p = p.next {
-            ...
-        }
-    }()
-}
-
-*/
-
 // List is a linked list
 type List struct {
 	value int
