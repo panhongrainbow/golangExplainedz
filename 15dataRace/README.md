@@ -15,14 +15,14 @@ If the code contains the following content, then consider using `race detecter`.
    $ make test
    ```
 
-   <img src="../../assets/image-20230424151618339.png" alt="image-20230424151618339" style="zoom:80%;" /> 
+   <img src="../assets/image-20230424151618339.png" alt="image-20230424151618339" style="zoom:80%;" /> 
 
    ```bash
    $ cd /home/panhong/go/src/github.com/panhongrainbow/golangExplainedz/16_practice/3_race_detector/example/basic/goroutine
    $ make benchmark
    ```
 
-   <img src="../../assets/image-20230424152121506.png" alt="image-20230424152121506" style="zoom:80%;" /> 
+   <img src="../assets/image-20230424152121506.png" alt="image-20230424152121506" style="zoom:80%;" /> 
 
 2. As long as the program contains `channel`
 
@@ -33,7 +33,7 @@ If the code contains the following content, then consider using `race detecter`.
    $ make test
    ```
 
-   <img src="../../assets/image-20230424170604665.png" alt="image-20230424170604665" style="zoom:80%;" /> 
+   <img src="../assets/image-20230424170604665.png" alt="image-20230424170604665" style="zoom:80%;" /> 
 
 3. As long as the program contains `syc package`
 
@@ -44,7 +44,7 @@ If the code contains the following content, then consider using `race detecter`.
    $ make test
    ```
 
-   <img src="../../assets/image-20230424180655469.png" alt="image-20230424180655469" style="zoom:80%;" /> 
+   <img src="../assets/image-20230424180655469.png" alt="image-20230424180655469" style="zoom:80%;" /> 
 
 4. As long as the program contains `closure`
    ```bash
@@ -52,7 +52,7 @@ If the code contains the following content, then consider using `race detecter`.
    $ make test
    ```
 
-   <img src="../../assets/image-20230424195618919.png" alt="image-20230424195618919" style="zoom:80%;" /> 
+   <img src="../assets/image-20230424195618919.png" alt="image-20230424195618919" style="zoom:80%;" /> 
 
 5. Reading and writing `map` or `configuration information` in multiple Goroutines
    ```bash
@@ -60,14 +60,14 @@ If the code contains the following content, then consider using `race detecter`.
    $ make test
    ```
    
-   <img src="../../assets/image-20230425165604635.png" alt="image-20230425165604635" style="zoom:80%;" /> 
+   <img src="../assets/image-20230425165604635.png" alt="image-20230425165604635" style="zoom:80%;" /> 
    
    ```bash
    $ cd /home/panhong/go/src/github.com/panhongrainbow/golangExplainedz/16_practice/3_race_detector/example/basic/map
    $ make benchmark
    ```
 
-   <img src="../../assets/image-20230424213827572.png" alt="image-20230424213827572" style="zoom:80%;" /> 
+   <img src="../assets/image-20230424213827572.png" alt="image-20230424213827572" style="zoom:80%;" /> 
    
 7. As long as the program `accesses interface variables`
 
@@ -210,7 +210,7 @@ Confirm if the Linux distribution supports golang atomic.
 $ cat /proc/cpuinfo
 ```
 
-<img src="/home/panhong/go/src/github.com/panhongrainbow/note/typora-user-images/image-20230424135944881.png" alt="image-20230424135944881" style="zoom:80%;" /> 
+<img src="../assets/image-20230424135944881.png" alt="image-20230424135944881" style="zoom:80%;" /> 
 
 (2023/4/24)
 
