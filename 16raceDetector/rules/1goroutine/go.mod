@@ -1,3 +1,3 @@
-module github.com/panhongrainbow/golangExplainedz/16_practice/3_race_detector/example/basic/goroutine
+module github.com/panhongrainbow/golangExplainedz/16raceDetector/rules/1goroutine
 
 go 1.20

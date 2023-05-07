@@ -2,27 +2,24 @@ package goroutine_race
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
-var mu sync.Mutex // correct (1/3) !
-
 // Test_Race_goroutines fixed that goroutines are not synchronized
 func Test_Race_goroutines(t *testing.T) {
-	// use wait group to wait for all goroutines to finish
+	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 
-	// shared variable by goroutines
-	count := 0 // ----- race ----->
+	// Shared variable by goroutines
+	var count int32 = 0 // ----- race ----->
 
 	// Start 1000 goroutines
 	for i := 0; i < 1000; i++ {
 		go func() {
 			defer wg.Done()
-			mu.Lock()   // correct (2/3) !
-			count++     // <----- race ----- ( X many )
-			mu.Unlock() // correct (3/3) !
+			atomic.AddInt32(&count, 1) // <----- race ----- ( X many ) // correct (1/1) !
 		}()
 	}
 
@@ -37,8 +34,6 @@ func Benchmark_Race_goroutines(b *testing.B) {
 
 	// Write to the shared variable
 	for i := 0; i < b.N; i++ {
-		mu.Lock()
-		count++
-		mu.Unlock()
+		atomic.AddInt32(&count, 1)
 	}
 }
