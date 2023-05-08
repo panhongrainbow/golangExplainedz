@@ -24,7 +24,7 @@ func Test_Race_list(t *testing.T) {
 	root.next = new(List)    // Add (1/3) ! (root.next must be initialized to avoid CAS failure)
 
 	// Start 1000 goroutines
-	for i := 0; i < 1000; i++ { // <----- race ----- ( X many )
+	for i := 0; i < 1000; i++ { // <- race -
 		i := i // add ! (2/3)
 		go func() {
 			defer wg.Done()

@@ -37,7 +37,7 @@ func Test_Race_timer2(t *testing.T) {
 			// do nothing
 		default:
 			// if timer is setted to 1 * time.Second
-			count++
+			count++ // <----- race -----
 		}
 	}()
 

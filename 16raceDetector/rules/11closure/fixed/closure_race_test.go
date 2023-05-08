@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Test_Race_closure shows that closure is not in synchronized condition due to a malfunctioning closure mechanism..
+// Test_Race_closure has been fixed as it was not in a synchronized condition due to a malfunctioning closure mechanism.
 func Test_Race_closure(t *testing.T) {
 	// use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
@@ -14,14 +14,15 @@ func Test_Race_closure(t *testing.T) {
 	// Shared variable by goroutines
 	count := 0 // ----- race ----->
 
+	// Use the shared lock
+	var mu sync.Mutex // correct (1/1) !
+
 	// Make a closure
 	closure := func() func() {
-		// Use closure's lock
-		var mu sync.Mutex
 		return func() {
 			defer wg.Done()
 			mu.Lock()
-			count++
+			count++ // <----- race ----- ( X many )
 			mu.Unlock()
 		}
 	}

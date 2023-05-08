@@ -39,8 +39,8 @@ func Test_Race_timer2(t *testing.T) {
 			// do nothing
 		default:
 			// if timer is setted to 1 * time.Second
-			mu.Lock() // add (4/5) !
-			count++
+			mu.Lock()   // add (4/5) !
+			count++     // <----- race -----
 			mu.Unlock() // add (5/5) !
 		}
 	}()

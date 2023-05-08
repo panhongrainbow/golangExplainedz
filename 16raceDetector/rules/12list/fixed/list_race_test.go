@@ -23,7 +23,7 @@ func Test_Race_list(t *testing.T) {
 	root := &List{value: -1} // ----- race ----->
 
 	// Start 1000 goroutines
-	for i := 0; i < 1000; i++ { // <----- race ----- ( X many )
+	for i := 0; i < 1000; i++ { // <- race -
 		i := i // add (2/4) !
 		go func() {
 			defer wg.Done()

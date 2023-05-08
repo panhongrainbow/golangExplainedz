@@ -1,29 +1,25 @@
-package closure_race
+package enhanced
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
 // Test_Race_closure has been fixed as it was not in a synchronized condition due to a malfunctioning closure mechanism.
 func Test_Race_closure(t *testing.T) {
-	// use wait group to wait for all goroutines to finish
+	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 
 	// Shared variable by goroutines
-	count := 0 // ----- race ----->
-
-	// Use the shared lock
-	var mu sync.Mutex // correct (1/1)
+	var count int32 // ----- race -----> // correct (1/2) !
 
 	// Make a closure
 	closure := func() func() {
 		return func() {
 			defer wg.Done()
-			mu.Lock()
-			count++
-			mu.Unlock()
+			atomic.AddInt32(&count, 1) // <----- race ----- ( X many ) // correct (2/2) !
 		}
 	}
 

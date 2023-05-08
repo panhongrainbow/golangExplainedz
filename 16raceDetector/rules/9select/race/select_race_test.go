@@ -1,22 +1,23 @@
-package select_atomic
+package select_race
 
 import (
 	"sync"
-	"sync/atomic"
 	"testing"
 )
 
-var count int32 // ----- race ----->
+// Shared variable by goroutines
+var count int // ----- race ----->
 
+// inc increments count by one.
 func inc(ch1, ch2 chan bool) {
-	atomic.AddInt32(&count, 1) // <----- race ----- ( X mamy ) // fixed !
 	select {
 	case <-ch1:
 	case <-ch2:
 	}
-	atomic.AddInt32(&count, 1) // <----- race ----- ( X many )  // fixed !
+	count++ // <----- race ----- ( X many )
 }
 
+// Test_Race_select shows that the program is not in synchronized condition due to a malfunctioning select mechanism.
 func Test_Race_select(t *testing.T) {
 	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
@@ -32,7 +33,7 @@ func Test_Race_select(t *testing.T) {
 		}()
 	}
 
-	// Close channels
+	// What if close channels accidentally // <- race -
 	close(ch1)
 	close(ch2)
 

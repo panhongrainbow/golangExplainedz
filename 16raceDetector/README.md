@@ -685,13 +685,70 @@ $ make race
 ### Error
 
 ```go
-
+func Test_Race_timer2(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+    
+	timer := time.NewTimer(1 * time.Second)
+	defer timer.Stop()
+    
+	var count int // ----- race ----->
+    
+	go func() {
+		defer wg.Done()
+		count++ // <----- race -----
+	}()
+    
+	go func() {
+		defer wg.Done()
+		select {
+		case <-timer.C: // <- random race -
+			// if timer is setted to 0 * time.Second
+		default:
+			// if timer is setted to 1 * time.Second
+			count++ // <----- race -----
+		}
+	}()
+    
+	wg.Wait()
+}
 ```
 
 ### Fixed
 
 ```go
-2
+var mu sync.Mutex // add (1/5) !
+
+func Test_Race_timer2(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+    
+	timer := time.NewTimer(1 * time.Second)
+	defer timer.Stop()
+	var count int
+    
+	go func() {
+		defer wg.Done()
+		mu.Lock()   // add (2/5) !
+		count++
+		mu.Unlock() // add (3/5) !
+	}()
+    
+	go func() {
+		defer wg.Done()
+		select {
+		case <-timer.C:
+			// if timer is setted to 0 * time.Second
+		default:
+			// if timer is setted to 1 * time.Second
+			mu.Lock()   // add (4/5) !
+			count++
+			mu.Unlock() // add (5/5) !
+		}
+	}()
+    
+	wg.Wait()
+}
 ```
 
 ### Enhanced
@@ -746,82 +803,442 @@ $ make race
 # ok      ./rules/8timer2/enhanced        0.025s
 ```
 
-## 9
+## 9select
 
 ### Error
 
 ```go
-1
+var count int // ----- race ----->
+
+func inc(ch1, ch2 chan bool) {
+	select {
+	case <-ch1:
+	case <-ch2:
+	}
+	count++ // <----- race ----- ( X many )
+}
+
+func Test_Race_select(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(10)
+    
+	ch1 := make(chan bool)
+	ch2 := make(chan bool)
+	for i := 0; i < 10; i++ {
+		go func() { // <- race -
+			defer wg.Done()
+			inc(ch1, ch2) // <- race -
+		}()
+	}
+
+	// What if close channels // <- race -
+	close(ch1)
+	close(ch2)
+    
+	wg.Wait()
+}
 ```
 
 ### Fixed
 
 ```go
-2
+var mu sync.Mutex // add (1/5) !
+
+var count int
+
+func inc(ch1, ch2 chan bool) {
+	mu.Lock()   // add (2/5) !
+	count++
+	mu.Unlock() // add (3/5) !
+	select {
+	case <-ch1:
+	case <-ch2:
+	}
+	mu.Lock()   // add (4/5) !
+	count++
+	mu.Unlock() // add (5/5) !
+}
+
+func Test_Race_select(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(10)
+    
+	ch1 := make(chan bool)
+	ch2 := make(chan bool)
+	for i := 0; i < 10; i++ {
+		go func() {
+			defer wg.Done()
+			inc(ch1, ch2)
+		}()
+	}
+    
+	close(ch1)
+	close(ch2)
+    
+	wg.Wait()
+}
 ```
 
 ### Enhanced
 
 ````go
-3
+var count int32
+
+func inc(ch1, ch2 chan bool) {
+	atomic.AddInt32(&count, 1) // correct (1/2) !
+	select {
+	case <-ch1:
+	case <-ch2:
+	}
+	atomic.AddInt32(&count, 1) // correct (2/2) !
+}
+
+func Test_Race_select(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(10)
+    
+	ch1 := make(chan bool)
+	ch2 := make(chan bool)
+	for i := 0; i < 10; i++ {
+		go func() {
+			defer wg.Done()
+			inc(ch1, ch2)
+		}()
+	}
+    
+	close(ch1)
+	close(ch2)
+    
+	wg.Wait()
+}
 ````
 
 ### Operation
 
 ``` bash
-4
+$ make race
+# go test -race -v -run Test_Race_select ./race/ | tail -n 3
+# FAIL
+# FAIL    ./rules/9select/race    0.029s
+# FAIL
+# go test -race -v -run Test_Race_select ./fixed/ | tail -n 3
+# --- PASS: Test_Race_select (0.00s)
+# PASS
+# ok      ./rules/9select/fixed   0.027s
+# go test -race -v -run Test_Race_select ./enhanced/ | tail -n 3
+# --- PASS: Test_Race_select (0.00s)
+# PASS
+# ok      ./rules/9select/enhanced        0.031s
 ```
 
-## 10
+## 10interface
 
 ### Error
 
 ```go
-1
+type I interface {
+	Set(x int)
+}
+
+type T struct {
+	x int
+}
+
+func (t *T) Set(x int) {
+	t.x = x
+}
+
+var obj I
+
+func Write() {
+	obj = new(T)
+}
+
+func Set() {
+	obj = new(T)
+	obj.Set(10)
+}
+
+func Test_Race_interface(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	for i := 0; i < 500; i++ {
+		go func() {
+			defer wg.Done()
+			Write() // <- race -
+		}()
+
+		go func() {
+			defer wg.Done()
+			Set() // <- race -
+		}()
+	}
+    
+	wg.Wait()
+}
 ```
 
 ### Fixed
 
 ```go
-2
+type I interface {
+	Set(x int)
+}
+
+type T struct {
+	x int
+}
+
+func (t *T) Set(x int) {
+	t.x = x
+}
+
+var obj I
+
+func Write() {
+	obj = new(T)
+}
+
+func Set() {
+	obj = new(T)
+	obj.Set(10)
+}
+
+func MutexWrite() {
+	mu.Lock()    // add (1/4) !
+	obj = new(T)
+	mu.Unlock()  // add (2/4) !
+}
+
+func MutexSet() {
+	mu.Lock() // add (3/4) !
+	obj = new(T)
+	obj.Set(10)
+	mu.Unlock() // add (4/4) !
+}
+
+func Test_fixed_interface(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	for i := 0; i < 500; i++ {
+		go func() {
+			defer wg.Done()
+			MutexWrite() // fixed (1/2) !
+		}()
+
+		go func() {
+			defer wg.Done()
+			MutexSet() // fixed (2/2) !
+		}()
+	}
+    
+	wg.Wait()
+}
 ```
 
 ### Enhanced
 
 ````go
-3
+type I interface {
+	Set(x int)
+}
+
+type T struct {
+	x int
+}
+
+func (t *T) Set(x int) {
+	t.x = x
+}
+
+var obj I
+
+func Write() {
+	obj = new(T)
+}
+
+func Set() {
+	obj = new(T)
+	obj.Set(10)
+}
+
+var mu2 sync.Mutex
+
+func AtomicWrite() {
+	// obj2.Store(new(T)) // Big no, no, not atomic !!!
+	t := new(T)
+	obj2.Store(t) // Atomic !!! // correct (1/2) !
+}
+
+func AtomicSet() {
+	mu2.Lock()
+	obj2.Load().(*T).Set(10) // Big no, no, not atomic !!! need to use mutex // correct (2/2) !
+	mu2.Unlock()
+}
 ````
 
 ### Operation
 
 ``` bash
-4
+$ make race
+# go test -race -v -run Test_Race_interface ./race/ | tail -n 3
+# FAIL
+# FAIL    ./rules/10interface/race        0.032s
+# FAIL
+# go test -race -v -run Test_fixed_interface ./race/ | tail -n 3
+# --- PASS: Test_fixed_interface (0.00s)
+# PASS
+# ok      ./rules/10interface/race        0.040s
+# go test -race -v -run Test_atomic_interface ./race/
+# === RUN   Test_atomic_interface
+# --- PASS: Test_atomic_interface (0.00s)
+# PASS
+# ok      ./rules/10interface/race        0.029s
+
+$ go test -v -bench=. -run=none -benchmem ./race/
+# goos: linux
+# goarch: amd64
+# pkg: ./rules/10interface/race
+# cpu: Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
+# Benchmark_Race_fixed_interface
+# Benchmark_Race_fixed_interface-8         2049138               624.9 ns/op            19 B/op          2 allocs/op
+# Benchmark_Race_atomic_interface
+# Benchmark_Race_atomic_interface-8        2428218               500.5 ns/op             8 B/op          1 allocs/op
+# PASS
+# ok      ./rules/10interface/race        3.608s
 ```
 
-## 11
+## 11closure
 
 ### Error
 
 ```go
-1
+import (
+	"sync"
+	"testing"
+)
+
+func Test_Race_closure(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	count := 0 // ----- race ----->
+    
+	closure := func() func() {
+		var mu sync.Mutex // <- race -
+		return func() {
+			defer wg.Done()
+			mu.Lock()
+            count++ // <----- race ----- ( X many )
+			mu.Unlock()
+		}
+	}
+
+	/*for i := 0; i < 1000; i++ {
+		go closure() //  Not correct, it will result in being unable to unlock
+	}*/
+
+	// Create 1000 goroutines
+	for i := 0; i < 1000; i++ {
+		/*
+			The return value should be stored in the fn variable to be garbage collected;
+			Otherwise, it will result in being unable to unlock
+		*/
+		fn := closure()
+		go func() {
+			fn() // Call the fn variable instead of closure()
+		}()
+	}
+    
+	wg.Wait()
+}
 ```
 
 ### Fixed
 
 ```go
-2
+func Test_Race_closure(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1000)
+	count := 0
+    
+	var mu sync.Mutex // correct (1/1) !
+    
+	closure := func() func() {
+		return func() {
+			defer wg.Done()
+			mu.Lock()
+			count++
+			mu.Unlock()
+		}
+	}
+    
+	for i := 0; i < 1000; i++ {
+		fn := closure()
+		go func() {
+			fn()
+		}()
+	}
+    
+	wg.Wait()
+}
+
 ```
 
 ### Enhanced
 
 ````go
-3
+import (
+	"sync"
+	"sync/atomic"
+	"testing"
+)
+
+func Test_Race_closure(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	var count int32 // correct (1/2) !
+    
+	closure := func() func() {
+		return func() {
+			defer wg.Done()
+			atomic.AddInt32(&count, 1) // correct (2/2) !
+		}
+	}
+    
+	for i := 0; i < 1000; i++ {
+		fn := closure()
+		go func() {
+			fn()
+		}()
+	}
+    
+	wg.Wait()
+}
 ````
 
 ### Operation
 
 ``` bash
-4
+$ make race
+# go test -race -v -run Test_Race_closure ./race/ | tail -n 3
+# FAIL
+# FAIL    ./rules/11closure/race  0.024s
+# FAIL
+
+# go test -race -v -run Test_Race_closure ./fixed/ | tail -n 3
+# --- PASS: Test_Race_closure (0.00s)
+# PASS
+# ok      ./rules/11closure/fixed (cached)
+
+# go test -race -v -run Test_Race_closure ./enhanced/ #| tail -n 3
+# === RUN   Test_Race_closure
+# --- PASS: Test_Race_closure (0.00s)
+# PASS
+# ok      ./rules/11closure/enhanced      (cached)
 ```
 
 ## 12
@@ -847,7 +1264,19 @@ $ make race
 ### Operation
 
 ``` bash
-4
+$ make race
+# go test -race -v -run Test_Race_list ./race/ | tail -n 3
+# FAIL
+# FAIL    github.com/panhongrainbow/golangExplainedz/16raceDetector/rules/12list/race     0.025s
+# FAIL
+# go test -race -v -run Test_Race_list ./fixed/ | tail -n 3
+# --- PASS: Test_Race_list (0.01s)
+# PASS
+# ok      github.com/panhongrainbow/golangExplainedz/16raceDetector/rules/12list/fixed    (cached)
+# go test -race -v -run Test_Race_list ./enhanced/ | tail -n 3
+# --- PASS: Test_Race_list (0.00s)
+# PASS
+# ok      github.com/panhongrainbow/golangExplainedz/16raceDetector/rules/12list/enhanced (cached)
 ```
 
 ## 13
