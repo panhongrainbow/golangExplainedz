@@ -1,11 +1,13 @@
 package list_race
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 )
 
-var mu sync.Mutex // add (1/4) !
+// Create a mutex
+var mu sync.Mutex // add (1/3) !
 
 // List is a linked list
 type List struct {
@@ -13,46 +15,79 @@ type List struct {
 	next  *List
 }
 
-// Test_Race_list fixed that goroutines are not synchronized
+// Test_Race_list fixed that the root list is not synchronized.
 func Test_Race_list(t *testing.T) {
-	// use wait group to wait for all goroutines to finish
+	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 
-	// shared variable by goroutines
+	// Shared variable by goroutines
 	root := &List{value: -1} // ----- race ----->
 
 	// Start 1000 goroutines
 	for i := 0; i < 1000; i++ { // <- race -
-		i := i // add (2/4) !
+		i := i
 		go func() {
+			// Append to the list tail
 			defer wg.Done()
-			list := &List{value: i} // <----- race ----- ( X many )
-			list.next = new(List)
-			mu.Lock()        // add (3/4) !
-			root.next = list // <----- race ----- ( X many )
-			mu.Unlock()      // add (4/4) !
+			mu.Lock() // add (2/3) !
+			list := &List{value: i}
+			next := root
+			for {
+				if next.next == nil {
+					next.next = list // <----- race ----- ( X many )
+					break
+				} else {
+					next = next.next
+				}
+			}
+			mu.Unlock() // add (3/3) !
 		}()
 	}
 
 	// Wait for all goroutines to finish
 	wg.Wait()
+
+	// Count list length
+	var count int
+	next := root
+	for {
+		if next.next == nil {
+			break
+		} else {
+			count++
+			next = next.next
+		}
+	}
+	fmt.Println("list length: ", count)
 }
 
 // Benchmark_Race_list test
 func Benchmark_Race_list(b *testing.B) {
-	// shared variable by goroutines
-	root := &List{value: -1}
-
-	// Reset timer
-	b.ResetTimer()
-
-	// Benchmark
 	for i := 0; i < b.N; i++ {
-		list := &List{value: i} // <----- race ----- ( X many )
-		list.next = new(List)
-		mu.Lock()
-		root.next = list // <----- race ----- ( X many )
-		mu.Unlock()
+		var wg sync.WaitGroup
+		wg.Add(1000)
+		root := &List{value: -1}
+
+		for i := 0; i < 1000; i++ {
+			i := i
+			go func() {
+				defer wg.Done()
+				mu.Lock()
+				list := &List{value: i}
+				next := root
+				for {
+					if next.next == nil {
+						next.next = list
+						break
+					} else {
+						next = next.next
+					}
+				}
+				mu.Unlock()
+			}()
+		}
+
+		wg.Wait()
 	}
 }

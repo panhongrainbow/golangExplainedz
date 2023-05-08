@@ -1241,24 +1241,156 @@ $ make race
 # ok      ./rules/11closure/enhanced      (cached)
 ```
 
-## 12
+## 12list
 
 ### Error
 
 ```go
-1
+type List struct {
+	value int
+	next  *List
+}
+
+func Test_Race_list(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	root := &List{value: -1} // ----- race ----->
+    
+	for i := 0; i < 1000; i++ { // <- race -
+		i := i
+		go func() {
+			defer wg.Done()
+			list := &List{value: i}
+			next := root
+			for {
+				if next.next == nil {
+					next.next = list // <----- race ----- ( X many )
+					break
+				} else {
+					next = next.next
+				}
+			}
+		}()
+	}
+	wg.Wait()
+    
+	var count int
+	next := root
+	for {
+		if next.next == nil {
+			break
+		} else {
+			count++
+			next = next.next
+		}
+	}
+	fmt.Println("list length: ", count)
+}
 ```
 
 ### Fixed
 
 ```go
-2
+var mu sync.Mutex // add (1/3) !
+
+type List struct {
+	value int
+	next  *List
+}
+
+func Test_Race_list(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1000)
+	root := &List{value: -1}
+    
+	for i := 0; i < 1000; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			mu.Lock() // add (2/3) !
+			list := &List{value: i}
+			next := root
+			for {
+				if next.next == nil {
+					next.next = list
+					break
+				} else {
+					next = next.next
+				}
+			}
+			mu.Unlock() // add (3/3) !
+		}()
+	}
+    
+	wg.Wait()
+    
+	var count int
+	next := root
+	for {
+		if next.next == nil {
+			break
+		} else {
+			count++
+			next = next.next
+		}
+	}
+	fmt.Println("list length: ", count)
+}
 ```
 
 ### Enhanced
 
 ````go
-3
+type List struct {
+	value int
+	next  atomic.Pointer[List] // correct (1/3) !
+}
+
+func Test_Race_list(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	root := &List{value: -1}
+    
+	for i := 0; i < 1000; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			list := List{value: i}
+			next := root
+			for {
+				if next.next.Load() == nil { // correct (2/3) !
+					if next.next.CompareAndSwap(nil, &list) { // correct (3/3) !
+						break
+					}
+				} else {
+					next = next.next.Load()
+				}
+			}
+		}()
+	}
+    
+	wg.Wait()
+    
+	var count int
+	next := root
+	for {
+		if next.next.Load() == nil {
+			break
+		} else {
+			count++
+			next = next.next.Load()
+		}
+	}
+	fmt.Println("list length: ", count)
+    
+	fmt.Println(root.value)
+	fmt.Println(root.next.Load().value)
+	fmt.Println(root.next.Load().next.Load().value)
+	fmt.Println(root.next.Load().next.Load().next.Load().value)
+	fmt.Println(root.next.Load().next.Load().next.Load().next.Load().value)
+}
 ````
 
 ### Operation
@@ -1267,16 +1399,38 @@ $ make race
 $ make race
 # go test -race -v -run Test_Race_list ./race/ | tail -n 3
 # FAIL
-# FAIL    github.com/panhongrainbow/golangExplainedz/16raceDetector/rules/12list/race     0.025s
+# FAIL    ./rules/12list/race     0.034s
 # FAIL
+
 # go test -race -v -run Test_Race_list ./fixed/ | tail -n 3
-# --- PASS: Test_Race_list (0.01s)
+# --- PASS: Test_Race_list (0.03s)
 # PASS
-# ok      github.com/panhongrainbow/golangExplainedz/16raceDetector/rules/12list/fixed    (cached)
+# ok      ./rules/12list/fixed    0.063s
+
 # go test -race -v -run Test_Race_list ./enhanced/ | tail -n 3
-# --- PASS: Test_Race_list (0.00s)
+# --- PASS: Test_Race_list (0.03s)
 # PASS
-# ok      github.com/panhongrainbow/golangExplainedz/16raceDetector/rules/12list/enhanced (cached)
+# ok      ./rules/12list/enhanced 0.056s
+
+$ go test -v -bench=. -run=none -benchmem ./fixed/
+# goos: linux
+# goarch: amd64
+# pkg: ./rules/12list/fixed
+# cpu: Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
+# Benchmark_Race_list
+# Benchmark_Race_list-8                865           1446464 ns/op           48707 B/op       2007 allocs/op
+# PASS
+# ok      ./rules/12list/fixed    1.397s
+
+# go test -v -bench=. -run=none -benchmem ./enhanced/
+# goos: linux
+# goarch: amd64
+# pkg: ./rules/12list/enhanced
+# cpu: Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
+# Benchmark_Race_list
+# Benchmark_Race_list-8               2365            554933 ns/op           48041 B/op       2002 allocs/op
+# PASS
+# ok      ./rules/12list/enhanced 1.369s
 ```
 
 ## 13

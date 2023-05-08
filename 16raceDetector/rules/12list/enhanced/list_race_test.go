@@ -1,68 +1,96 @@
 package list_race
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
-	"unsafe"
 )
 
 // List is a linked list
 type List struct {
 	value int
-	next  *List
+	next  atomic.Pointer[List] // correct (1/3) !
 }
 
-// Test_Race_list fixed that goroutines are not synchronized
+// Test_Race_list fixed that the root list is not synchronized.
 func Test_Race_list(t *testing.T) {
-	// use wait group to wait for all goroutines to finish
+	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
 	wg.Add(1000)
 
-	// shared variable by goroutines
+	// Shared variable by goroutines
 	root := &List{value: -1} // ----- race ----->
-	root.next = new(List)    // Add (1/3) ! (root.next must be initialized to avoid CAS failure)
 
 	// Start 1000 goroutines
 	for i := 0; i < 1000; i++ { // <- race -
-		i := i // add ! (2/3)
+		i := i
 		go func() {
+			// Append to the list tail
 			defer wg.Done()
-			list := &List{value: i} // <----- race ----- ( X many )
-			list.next = new(List)
-			if atomic.CompareAndSwapPointer( // <----- race ----- ( X many ) // Correct (3/3) ! by using CAS
-				(*unsafe.Pointer)(unsafe.Pointer(root.next)),
-				unsafe.Pointer(root.next),
-				unsafe.Pointer(list.next),
-			) {
-				return
+			list := List{value: i}
+			next := root
+			for {
+				if next.next.Load() == nil { // correct (2/3) !
+					if next.next.CompareAndSwap(nil, &list) { // <----- race ----- ( X many ) // correct (3/3) !
+						break
+					}
+				} else {
+					next = next.next.Load()
+				}
 			}
 		}()
 	}
 
 	// Wait for all goroutines to finish
 	wg.Wait()
+
+	// Count list length
+	var count int
+	next := root
+	for {
+		if next.next.Load() == nil {
+			break
+		} else {
+			count++
+			next = next.next.Load()
+		}
+	}
+	fmt.Println("list length: ", count)
+
+	// Check the detail carefully
+	fmt.Println(root.value)
+	fmt.Println(root.next.Load().value)
+	fmt.Println(root.next.Load().next.Load().value)
+	fmt.Println(root.next.Load().next.Load().next.Load().value)
+	fmt.Println(root.next.Load().next.Load().next.Load().next.Load().value)
 }
 
 // Benchmark_Race_list test
 func Benchmark_Race_list(b *testing.B) {
-	// shared variable by goroutines
-	root := &List{value: -1} // ----- race ----->
-	root.next = new(List)    // Add (1/3) ! (root.next must be initialized to avoid CAS failure)
-
-	// Reset timer
-	b.ResetTimer()
-
-	// Benchmark
 	for i := 0; i < b.N; i++ {
-		list := &List{value: i} // <----- race ----- ( X many )
-		list.next = new(List)
+		var wg sync.WaitGroup
+		wg.Add(1000)
+		root := &List{value: -1}
 
-		// CAS
-		atomic.CompareAndSwapPointer( // <----- race ----- ( X many ) // Correct (3/3) ! by using CAS
-			(*unsafe.Pointer)(unsafe.Pointer(root.next)),
-			unsafe.Pointer(root.next),
-			unsafe.Pointer(list.next),
-		)
+		for i := 0; i < 1000; i++ {
+			i := i
+			go func() {
+				defer wg.Done()
+				list := List{value: i}
+				next := root
+				for {
+					if next.next.Load() == nil {
+						if next.next.CompareAndSwap(nil, &list) {
+							break
+						}
+					} else {
+						next = next.next.Load()
+					}
+				}
+			}()
+		}
+
+		wg.Wait()
 	}
 }

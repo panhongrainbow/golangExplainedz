@@ -1,6 +1,7 @@
 package list_race
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 )
@@ -11,7 +12,7 @@ type List struct {
 	next  *List
 }
 
-// Test_Race_list shows that goroutines are not synchronized
+// Test_Race_list shows the root list is not synchronized.
 func Test_Race_list(t *testing.T) {
 	// use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
@@ -24,13 +25,34 @@ func Test_Race_list(t *testing.T) {
 	for i := 0; i < 1000; i++ { // <- race -
 		i := i
 		go func() {
+			// append to the list tail
 			defer wg.Done()
-			list := &List{value: i} // <----- race ----- ( X many )
-			list.next = new(List)
-			root.next = list // <----- race ----- ( X many )
+			list := &List{value: i}
+			next := root
+			for {
+				if next.next == nil {
+					next.next = list // <----- race ----- ( X many )
+					break
+				} else {
+					next = next.next
+				}
+			}
 		}()
 	}
 
 	// Wait for all goroutines to finish
 	wg.Wait()
+
+	// count list length
+	var count int
+	next := root
+	for {
+		if next.next == nil {
+			break
+		} else {
+			count++
+			next = next.next
+		}
+	}
+	fmt.Println("list length: ", count)
 }
