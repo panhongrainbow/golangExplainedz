@@ -371,7 +371,8 @@ $ make race
 # PASS
 # ok      ./rules/4map/enhanced   (cached)
 
-$ go test -v -bench=. -run=none -benchmem ./fixed/
+$ make benchmark
+# go test -v -bench=. -run=none -benchmem ./fixed/
 # goos: linux
 # goarch: amd64
 # pkg: github.com/panhongrainbow/golangExplainedz/16raceDetector/rules/4map/fixed
@@ -1097,7 +1098,8 @@ $ make race
 # PASS
 # ok      ./rules/10interface/race        0.029s
 
-$ go test -v -bench=. -run=none -benchmem ./race/
+$ make benchmark
+# go test -v -bench=. -run=none -benchmem ./race/
 # goos: linux
 # goarch: amd64
 # pkg: ./rules/10interface/race
@@ -1412,7 +1414,8 @@ $ make race
 # PASS
 # ok      ./rules/12list/enhanced 0.056s
 
-$ go test -v -bench=. -run=none -benchmem ./fixed/
+$ make benchmark
+# go test -v -bench=. -run=none -benchmem ./fixed/
 # goos: linux
 # goarch: amd64
 # pkg: ./rules/12list/fixed
@@ -1459,21 +1462,144 @@ $ go test -v -bench=. -run=none -benchmem ./fixed/
 4
 ```
 
+## 16unsafe
 
+### Error
 
+```golang
+// correct function is afraid of data race.
+func correct(p unsafe.Pointer, i int) { // <- race -
+	*(*int)(p) = i // ----- race ----->
+	return
+}
 
+func Test_Race_unsafe(t *testing.T) {
+	numbers := []int{1, 0}
+    
+	p1 := unsafe.Pointer(&(numbers[0]))
+	p2 := unsafe.Pointer(uintptr(p1) + unsafe.Sizeof(numbers[0]))
+    
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	for i := 0; i < 1000; i++ { // <- race -
+		i := i
+		go func() {
+			defer wg.Done()
+			correct(p2, i) // <----- race -----
 
+		}()
+	}
+    
+	wg.Wait()
+}
+```
 
+### Fixed
 
+```golang
+func correct(p unsafe.Pointer, i int) {
+	*(*int)(p) = i
+	return
+}
 
+func Test_Race_unsafe(t *testing.T) {
+	numbers := []int{1, 0}
+    
+	p1 := unsafe.Pointer(&(numbers[0]))
+	p2 := unsafe.Pointer(uintptr(p1) + unsafe.Sizeof(numbers[0]))
+    
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	var mu sync.Mutex // add (1/3) !
+    
+	for i := 0; i < 1000; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			mu.Lock()      // add (1/3) !
+			correct(p2, i)
+			mu.Unlock()    // add (3/3) !
+		}()
+	}
+    
+	wg.Wait()
+}
+```
 
+### Enhanced
 
+```golang
+func correct(p unsafe.Pointer, i int) {
+	*(*int)(p) = i
+	return
+}
 
+func Test_Race_unsafe(t *testing.T) {
+	numbers := []int{1, 0}
+    
+	p1 := unsafe.Pointer(&(numbers[0]))
+	p2 := unsafe.Pointer(uintptr(p1) + unsafe.Sizeof(numbers[0]))
+    
+	var wg sync.WaitGroup
+	wg.Add(1000)
+    
+	var locked int32 = 0 // add (1/3) !
+    
+	for i := 0; i < 1000; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			if atomic.CompareAndSwapInt32(&locked, 0, 1) { // add (2/3) !
+				correct(p2, i)
+				atomic.StoreInt32(&locked, 0) // add (3/3) !
+			}
+		}()
+	}
+    
+	wg.Wait()
+}
 
+```
 
+### Operation
 
+```bash
+$ make race
+# go test -race -v -run Test_Race_unsafe ./race/ | tail -n 3
+# FAIL
+# FAIL    ./rules/16unsafe/race   0.017s
+# FAIL
+# go test -race -v -run Test_Race_unsafe ./fixed/ | tail -n 3
+# --- PASS: Test_Race_unsafe (0.00s)
+# PASS
+# ok      ./rules/16unsafe/fixed  0.039s
+# go test -race -v -run Test_Race_unsafe ./enhanced/ | tail -n 3
+# --- PASS: Test_Race_unsafe (0.00s)
+# PASS
+# ok      ./rules/16unsafe/enhanced       0.025s
 
-
+$ make benchmark
+# go test -v -bench=. -run=none -benchmem ./fixed/
+# goos: linux
+# goarch: amd64
+# pkg: ./rules/16unsafe/fixed
+# cpu: Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
+# Benchmark_Race_unsafe
+# Benchmark_Race_unsafe-8         77442316                12.95 ns/op            0 B/op          0 allocs/op
+# PASS
+# ok      ./rules/16unsafe/fixed  1.023s
+# go test -v -bench=. -run=none -benchmem ./enhanced/
+# goos: linux
+# goarch: amd64
+# pkg: ./rules/16unsafe/enhanced
+# cpu: Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz
+# Benchmark_Race_unsafe
+# Benchmark_Race_unsafe-8         99169291                10.98 ns/op            0 B/op          0 allocs/op
+# PASS
+# ok      ./rules/16unsafe/enhanced       1.104s
+```
 
 
 

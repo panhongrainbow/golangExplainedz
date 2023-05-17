@@ -8,7 +8,7 @@ import (
 
 var mu sync.Mutex // correct (1/3) !
 
-// Test_Race_map fixed that map is not synchronized
+// Test_Race_map fixes that map is not synchronized
 func Test_Race_map(t *testing.T) {
 	// Use wait group to wait for all goroutine to finish
 	var wg sync.WaitGroup

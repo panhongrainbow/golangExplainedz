@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Test_Race_interface fixed that interface are not synchronized.
+// Test_Race_interface fixes that interface are not synchronized.
 func Test_Race_interface(t *testing.T) {
 	// use wait group to wait for all interface to finish
 	var wg sync.WaitGroup
@@ -29,7 +29,7 @@ func Test_Race_interface(t *testing.T) {
 	wg.Wait()
 }
 
-// Test_Race_interface fixed that interface are in synchronized.
+// Test_Race_interface fixes that interface are in synchronized.
 func Test_fixed_interface(t *testing.T) {
 	// use wait group to wait for all interface to finish
 	var wg sync.WaitGroup
@@ -53,7 +53,7 @@ func Test_fixed_interface(t *testing.T) {
 	wg.Wait()
 }
 
-// Test_atomic_interface fixed that interface are in synchronized.
+// Test_atomic_interface fixes that interface are in synchronized.
 func Test_atomic_interface(t *testing.T) {
 	// use wait group to wait for all interface to finish
 	var wg sync.WaitGroup

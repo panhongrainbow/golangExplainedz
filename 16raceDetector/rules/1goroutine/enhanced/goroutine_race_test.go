@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Test_Race_goroutines fixed that goroutines are not synchronized
+// Test_Race_goroutines fixes that goroutines are not synchronized
 func Test_Race_goroutines(t *testing.T) {
 	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup

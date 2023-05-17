@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Test_Race_map fixed that map is not synchronized
+// Test_Race_map fixes that map is not synchronized
 func Test_Race_map(t *testing.T) {
 	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup

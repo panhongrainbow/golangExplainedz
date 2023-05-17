@@ -13,7 +13,7 @@ type List struct {
 	next  atomic.Pointer[List] // correct (1/3) !
 }
 
-// Test_Race_list fixed that the root list is not synchronized.
+// Test_Race_list fixes that the root list is not synchronized.
 func Test_Race_list(t *testing.T) {
 	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup

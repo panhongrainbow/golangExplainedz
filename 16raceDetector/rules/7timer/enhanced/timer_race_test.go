@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Test_Race_timer fixed that channel are not synchronized.
+// Test_Race_timer fixes that channel are not synchronized.
 func Test_Race_timer(t *testing.T) {
 	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup

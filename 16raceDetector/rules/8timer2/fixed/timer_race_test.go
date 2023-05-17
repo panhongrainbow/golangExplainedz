@@ -9,7 +9,7 @@ import (
 // sync.Mutex is used to synchronize access to count.
 var mu sync.Mutex // add (1/5) !
 
-// Test_Race_timer fixed that channel are not synchronized.
+// Test_Race_timer fixes that channel are not synchronized.
 func Test_Race_timer2(t *testing.T) {
 	// Use wait group to wait for all goroutines to finish
 	var wg sync.WaitGroup
