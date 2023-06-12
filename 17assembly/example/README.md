@@ -43,6 +43,35 @@ It can only be said that the disassembled content is `a very good reference`, bu
 
 (2023/5/19)
 
+## Compare lea and mov
+
+In fact, these three lines are just going through the process of `function jumping`.
+
+<img src="../../assets/image-20230611220114128.png" alt="image-20230611220114128" style="zoom:80%;" /> 
+
+```assembly
+401006:	48 83 ec 18          	sub    $0x18,%rsp
+40100a:	48 89 6c 24 10       	mov    %rbp,0x10(%rsp)
+40100f:	48 8d 6c 24 10       	lea    0x10(%rsp),%rbp
+```
+
+Observe the difference between lea and mov instructions.
+
+<img src="../../assets/image-20230611212840782.png" alt="image-20230611212840782" style="zoom:80%;" />
+
+`lea` operates on `memory`, `mov` operates on `values`.
+
+## Assembly language units
+
+In fact, instructions such as `lea and mov` can be added with units, such as `leaq and movq`.
+
+| Units | Description |  Size   |
+| :---: | :---------: | :-----: |
+|   b   |    byte     | 1 Byte  |
+|   w   |    word     | 2 Bytes |
+|   l   |    long     | 4 Bytes |
+|   q   |  quadword   | 8 Bytes |
+
 ## NOP
 
 `NOP instructions` are used to `adjust the size of a code fragment`, as `a placeholder for future instructions`, to `delay execution of other instructions`, for `debugging, testing`, and to `give other hardware devices time to respond`.
@@ -63,3 +92,18 @@ func main() {
 }
 ```
 
+## Memory Barriers
+
+> When there is `mfence`, why do we need `xchg %ax,%ax` ?
+>
+> - `xchg  %ax,%ax` and `mfence` are different.
+> - `xchg  %ax,%ax` is just a temporary exchange, while `mfence` is more forced.  (mfence 较强制)
+
+Compare as follows:
+
+| memory barrier | Description                                                  |
+| -------------- | ------------------------------------------------------------ |
+| xchg  %ax,%ax  | (1) `xchg  %ax,%ax` performs an `atomic read-modify-write operation` that requires ordering on `the memory bus`, acts as a memory barrier.<br/><br />(2) `xchg %ax,%ax` just occupies the memory bus, `preventing other instructions from executing`. bus 暂用时，其他指令就无法执行<br /><br />(3) That's just temporary, temporary, temporary. |
+| mfence         | (1) mfence is very forced.<br />`A ll previous instructions must be completed` before continuing with subsequent instructions.<br />This means forcibly stopping and completing all instructions before mfence.<br />(mfence 之前的指令都要先完成)<br /><br />(2) Then how to know that the instructions before mfence have all been completed, because `the CPUs will notify each other`. <br />(因为 CPU 之间会互相通知) |
+
+(2023/6/11)
