@@ -9,7 +9,7 @@ import (
 /*
 [The arena] is used to allocate objects from a contiguous region of memory.
 [The bitmap] is used to keep track of which bytes in the arena are in use and which are free.
-[The span] is used to manage memory allocation and deallocation,
+[The span] is used to manage memory allocation and deallocation.
 */
 
 // Actually, the heapArenaSize and bitmapSize are 32 to 1, but this time we simulate 8 to 1.
