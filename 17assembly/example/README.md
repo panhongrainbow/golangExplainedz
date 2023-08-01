@@ -107,3 +107,59 @@ Compare as follows:
 | mfence         | (1) mfence is very forced.<br />`A ll previous instructions must be completed` before continuing with subsequent instructions.<br />This means forcibly stopping and completing all instructions before mfence.<br />(mfence 之前的指令都要先完成)<br /><br />(2) Then how to know that the instructions before mfence have all been completed, because `the CPUs will notify each other`. <br />(因为 CPU 之间会互相通知) |
 
 (2023/6/11)
+
+## Handwrite Assembly 
+
+> begin practicing writing assembly language
+
+Here are the current implementation examples
+
+| folder name | description                         |
+| ----------- | ----------------------------------- |
+| first       | The first assembly language program |
+| etc         |                                     |
+
+### first
+
+```assembly
+TEXT ·Add(SB), $0-16
+    MOVQ a+0(FP), AX
+    MOVQ b+8(FP), CX
+    ADDQ CX, AX
+    MOVQ AX, b+16(FP)
+    RET
+```
+
+- **16** here refers to **the parameter size**.
+  In this version, the entire program **does not use its own stack** (这次程式不使用自己的栈体).
+- Instead of using SP (Stack Pointer), **this time FP (Frame Pointer)** is used. FP is used to access the parameter values, while SP is used to locate stack variables.
+- **0(FP)** represents the location of **the first parameter relative to FP**, and **8(FP)** represents the location of **the second parameter**.
+  The parameters are arranged in **reverse order**, which is convenient for subfuctions. (反向排列)
+- The reason for storing the result at **16(FP)** is as follows:
+  Using **0(FP)** would go beyond the storage for **main(IP)**,
+  then it would reach the memory location of **the first parameter a 0(FP)**,
+  then to the memory location of **the second parameter b 8(FP)**,
+  and finally to reach **the return value** of the main program **16(FP)**.
+  (就是主函数那会有准一个一个空间放回传值，这属于主函数的，指到 16(FP) 就可存取这个位置)
+
+|---------------------------------------------|**(24FP)**
+
+|     **the return value of the main program**
+
+|---------------------------------------------|**(16FP)**
+
+|     **b parameter**
+
+|---------------------------------------------|**(8FP)**
+
+|     **a parameter**
+
+|---------------------------------------------|**(0FP)**
+
+|     **main IP**
+
+|---------------------------------------------|**(0SP)**
+
+|     **add sub funciont (no stack)**
+
+-----/
