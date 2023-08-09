@@ -4,6 +4,8 @@ test:
 	go test -v -run='^Test_Check_' no_pointer_test.go
 	@echo
 	go test -v -run='^Test_Check_' pass_pointer_test.go
+	@echo
+	go test -v -run='^Test_Check_' get_field_test.go
 benchmark:
 	go test -bench=. -run='^Benchmark_Performance_' no_pointer_test.go pass_pointer_test.go
 group:

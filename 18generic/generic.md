@@ -1,4 +1,26 @@
-# generic
+# Generic
+
+## GC Shape
+
+Because when using generics, the compiled program becomes larger due to expansion.
+
+Additionally, considering the performance of the garbage collector, `generics are linked to GC shape` instead of variable types.
+
+This concept is referred to as `monomorphization`.
+
+
+
+However, monomorphization can lead to decreased program performance.
+
+When the GC shape is `a primitive type or a struct, or when dealing with slices`, monomorphization usually proceeds smoothly without the need to extract iface from a dictionary.
+
+(单态化会导致程序性能下降，GCShape 在处理原始类型或结构体、切片时，通常会顺利进行单态化，而不会涉及从字典获取接口（iface）的行为)
+
+
+
+However, this behavior occurs when dealing with pointers. (指标有这问题)
+
+This is why generics can result in slower code.
 
 ## Three Scenarios
 
@@ -8,8 +30,8 @@ When generics involve the following conditions (Three Reasons), the speed will b
 
 | Reason    | Description                                                  |
 | --------- | ------------------------------------------------------------ |
-| reason    | As long as calling methods of the argument within the function.<br /><br />The main reason for `performance drops` usually stems from having `type parameters` in generic functions `declared as [T constraint]`, and then calling methods of T within those functions.<br />会形成 (泛型 interface) 2 (方法 interface) 转换和查找 |
-| interface | When calling methods of the parameter within the function, but `passing an interface as the argument`, it becomes slower.<br /><br />Using `an interface argument` results in `a conversion from one interface to another to access the method address of T`.<br />This is what causes the slowness.<br /><br />Moreover, `the resulting performance degradation` is most significant.<br />(Conversion from one interface to another)<br /><br />这个最慢，因为会形成 (泛型 interface) 2 (方法 interface) 转换，找最久 |
+| common    | As long as calling methods of the argument within the function.<br /><br />The main reason for `performance drops` usually stems from having `type parameters` in generic functions `declared as [T constraint]`, and then calling methods of T within those functions.<br />会形成 (泛型 interface) 2 (方法 interface) 转换和查找 |
+| interface | When calling methods of the parameter within the function, but `passing an interface as the argument`, it becomes slower.<br /><br />Using `an interface argument` results in `a conversion from one interface to another to access the method address of T`.<br />This is what causes the slowness.<br /><br />Moreover, `the resulting performance degradation` is most significant.<br />(Conversion from one interface to another)<br /><br />这个最慢，因为会形成 (泛型 interface) 2 (方法 interface) 的查找，找最久 |
 | pointer   | Pointers can stress the garbage collector.<br /><br />The GC needs to verify if `the pointer` can be collected and then check if `the data it points to` can also be collected.<br />This leads to `a double-checking process`.<br />The issue of `GC pressure caused by pointers` also exists when using interfaces.<br /><br />这是不只是在泛型会有的问题，在 interface 也会有这问题 |
 
 ## Worst Scenarios
@@ -74,7 +96,7 @@ func Benchmark_Group_GenericInterfaceC(b *testing.B) {
 
 ## Performance hierarchy
 
-### five layers
+### Five Layers
 
 Perform benchmark tests to analyze performance under different conditions.
 
@@ -271,7 +293,7 @@ Benchmark_Performance_NoGeneric-8       	18926174	        68.53 ns/op
 
 Here is where `passing pointer parameters to generic functions` is not recommended, but the execution result is quite `similar to the previous example that only uses interfaces`.
 
-(不建议，但和只使用接口的版本效能接近)
+(不建议，但和只使用接口的版本效能接近，因为会有 iface 查找的问题)
 
 ```go
 func Benchmark_Performance_PassPointer(b *testing.B) {
@@ -295,7 +317,11 @@ Benchmark_Performance_PassPointer-8     	14744830	        68.26 ns/op
 
 #### The Worst Performance
 
+The following is when `an interface is passed as a parameter` to a generic, causing a lookup of both the generic interface and the method interface.
 
+This is `the worst situation` to occur.
+
+(造成 会形成 (泛型 interface) 2 (方法 interface) 的查找，惨)
 
 ``` go
 func Benchmark_Performance_PassInterface(b *testing.B) {
@@ -310,3 +336,192 @@ func Benchmark_Performance_PassInterface(b *testing.B) {
 	}
 }
 ```
+
+Output：
+
+```go
+Benchmark_Performance_PassInterface-8   	13418542	        87.64 ns/op
+```
+
+## Get Field
+
+### Explanation
+
+Basically, within the function, it's `not` possible to directly `access the A and B of that tuple struct`.
+
+Only through the interface method, this situation of `calling the function` can be avoided.
+
+This is what is described as `common reason` in the three reasons for slowness.
+
+(constrait 为 any 不指定，tuple struct 中的 A B Field 取不到的，又要 call function，为慢速中的 common 理由)
+
+
+
+It should be said that the code within the generic function can only recognize the parameter as a constrained type, and the code `cannot make any assumptions about the type of the parameter beyond the constraints`.
+
+(不能對一個參數的 type 做 constraint 外的任何假設)
+
+
+
+In the case of `func Func(a Tuple[int,string])`, it's already instantiated, so accessing `a.A` and `a.B` is fine.
+
+(无法取值)
+
+
+
+However, in the case of `func Func[A any, B any, T Tuple[A,B]](a T)`, you `can't directly access `a.A` and `a.B` unless `T` is an interface that has methods to access them.
+
+(可以取值)
+
+
+
+The idea is to understand the topic without stepping on the slow-call method pitfall.
+
+(这里会中 common reason 的快速雷)
+
+
+
+But the current syntax `forces you into this pitfall`, unless you bring variables in and then don't access its contents.
+
+(除非函式把函式拿进来后不存取，不可能)
+
+
+
+The problem is, if you do that, the generic function becomes useless, and for tasks like maps or sorts, `you still need to care about the item value`.
+
+(不可能，map 和 sort 都需要取值，不可能 拿进来后不存取)
+
+### Example
+
+In the following example, the generic constraint is set to `any`, without specifying a type, which will lead to `an inability to retrieve values`.
+
+(泛型没有指定型态，会无法取值)
+
+```go
+package generic
+
+import (
+	"fmt"
+	"testing"
+)
+
+type Tuple struct {
+	FieldA int
+	FieldB string
+}
+
+func GenericFunction[T any](param T) { // No specific type is specified for generics.
+	switch v := param.(type) { // Here's an error, unable to retrieve values
+	case Tuple:
+		fmt.Printf("Tuple FieldA: %d, FieldB: %s\n", v.FieldA, v.FieldB)
+	default:
+		fmt.Println("Unsupported type")
+	}
+}
+
+func Test_GetField(t *testing.T) {
+	tupleInstance := Tuple{FieldA: 42, FieldB: "Hello"}
+
+	GenericFunction(tupleInstance)
+}
+```
+
+To solve the example above, you'll need to use a function call, as shown below
+
+(就用 call function 去解上面的问题)
+
+```go
+package generic
+
+import (
+	"fmt"
+	"testing"
+)
+
+type FieldGetter interface {
+	GetFieldA() int
+	GetFieldB() string
+}
+
+type Tuple struct {
+	FieldA int
+	FieldB string
+}
+
+func (t Tuple) GetFieldA() int {
+	return t.FieldA
+}
+
+func (t Tuple) GetFieldB() string {
+	return t.FieldB
+}
+
+func GenericFunction[T FieldGetter](param T) {
+	fieldA := param.GetFieldA()
+	fieldB := param.GetFieldB()
+	fmt.Printf("FieldA: %d, FieldB: %s\n", fieldA, fieldB)
+}
+
+func Test_Check_GetField(t *testing.T) {
+	tupleInstance := Tuple{FieldA: 42, FieldB: "Hello"}
+
+	GenericFunction(tupleInstance)
+}
+```
+
+Output：
+
+```go
+FieldA: 42, FieldB: Hello
+```
+
+There's another approach, which involves using a function to encapsulate `the type parameter T`.
+
+(T type parameter 被函式 F 包装隔离了)
+
+
+
+As shown below, the `Sort` function takes parameters `a []T` and `compare F`, where `a []T` is processed by the `compare F` function without direct involvement from the `Sort` function.
+
+(函式 F 隔离 T，Sort 函式不必介入)
+
+```go
+package main
+
+import (
+	"fmt"
+	"sort"
+)
+
+func Sort[T any, F func(a T, b T) bool](a []T, compare F) { // F encapsulates a
+	sort.Slice(a, func(i, j int) bool { // i j is the index of slice.
+		return compare(a[i], a[j])
+	})
+}
+
+func Test_Check_sort(t *testing.T) {
+	intSlice := []int{5, 2, 8, 1, 3}
+
+	Sort(intSlice, func(a, b int) bool {
+		return a < b
+	})
+
+	fmt.Println(intSlice)
+
+	floatSlice := []float32{5.1, 2.2, 8.3, 1.4, 3.5}
+
+	Sort(floatSlice, func(a, b float32) bool {
+		return a < b
+	})
+
+	fmt.Println(floatSlice)
+}
+```
+
+Output：
+
+```go
+[1 2 3 5 8]
+[1.4 2.2 3.5 5.1 8.3]
+```
+
